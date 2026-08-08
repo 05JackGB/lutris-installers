@@ -240,8 +240,8 @@ installer:
 
 - write_file:
     #Editing the Anniversary's Patch README to write more instructions in how to use the patch
-    description: Configuring README.txt
-    file: $GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/README.txt
+    description: Configuring README.md
+    file: "$GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/README.md"
     content: |
         Worms 4 Mayhem Anniversary Patch
         ================================
