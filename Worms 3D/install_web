@@ -1,0 +1,248 @@
+files:
+- officialpatch: https://archive.org/download/worms-3-dservice-patch-2/Worms3DServicePatch2.exe
+- launcherpatch: https://codeberg.org/Natanox/lutris-installers/raw/commit/19ee02cf014aa1011d7580b043a933492e7b68c0/Worms%203D/files/LauncherPatch.zip
+- w3dpatch: https://codeberg.org/Natanox/lutris-installers/raw/commit/19ee02cf014aa1011d7580b043a933492e7b68c0/Worms%203D/files/GamePatch.zip
+game:
+  exe: $GAMEDIR/drive_c/Team17/Worms 3D/Launcher.exe
+  prefix: $GAMEDIR
+  working_dir: $GAMEDIR/drive_c/Team17/Worms 3D
+
+installer:
+- task:
+    arch: win64
+    description: Creating Wine prefix.
+    name: create_prefix
+    prefix: $GAMEDIR
+
+- insert-disc:
+    message: Mount or insert both Worms 3D EUROPE discs then continue.
+    requires: setup.skin
+
+- task:
+    description: 'Installing Base Game.
+
+
+      Select "setup.exe" from the disc
+
+      Do not change the installation directory or start the game after setup.
+
+
+      Reject GameSpy Arcade and shortcut creation if asked.
+
+      '
+    executable: $DISC/setup.exe
+    name: wineexec
+    prefix: $GAMEDIR
+
+- task:
+    description: 'Installing Service Patch 2 (update to v1073).
+
+
+      Do not start the game yet!
+      '
+    executable: officialpatch
+    name: wineexec
+    prefix: $GAMEDIR
+
+- execute:
+    description: Making game directory writable
+    command: chmod -R u+w "$GAMEDIR/drive_c/Team17/Worms 3D"
+
+- execute:
+    description: Downloading newest Anniversary Patch from Heatray's GitHub
+    command: 'curl -s "https://api.github.com/repos/heatray/W3DPatch/releases/latest"
+      \
+
+      | grep browser_download_url \
+
+      | grep ''W3DPatch.*\.zip'' \
+
+      | cut -d ''"'' -f 4 \
+
+      | head -n 1 \
+
+      | xargs wget --no-check-certificate -O "$CACHE/W3DPatch.zip"
+
+      '
+
+- extract:
+    description: Extracting Anniversary Patch
+    dst: $GAMEDIR/drive_c/Team17/Worms 3D
+    file: $CACHE/W3DPatch.zip
+
+- execute:
+    command: cd "$GAMEDIR/drive_c"; chmod -R +w "Team17";
+
+- move:
+    description: Creating file Backups before patching
+    dst: $GAMEDIR/drive_c/Team17/Worms 3D/Launcher.exe.backup
+    src: $GAMEDIR/drive_c/Team17/Worms 3D/Launcher.exe
+- move:
+    dst: $GAMEDIR/drive_c/Team17/Worms 3D/bin/Worms3D.exe.backup
+    src: $GAMEDIR/drive_c/Team17/Worms 3D/bin/Worms3D.exe
+
+- extract:
+    description: Patching the launcher to skip CD check
+    dst: $GAMEDIR/drive_c/Team17/Worms 3D
+    file: launcherpatch
+- extract:
+    description: Patching the executable to avoid SecuROM 4.85.07 DRM
+    dst: $GAMEDIR/drive_c/Team17/Worms 3D/bin
+    file: w3dpatch
+
+- write_file:
+    description: Creating a README for Lutris/Linux usage instructions
+    file: "$GAMEDIR/drive_c/Team17/Worms 3D/README Anniversary Patch W3D.md"
+    mode: a
+    content: |
+
+      ---
+
+      # LUTRIS / LINUX USAGE GUIDE
+
+      ## ENGLISH
+
+      1. Open the game through Lutris. It will use Launcher.exe.
+      2. In the launcher's Advanced field, enter:
+
+          /WIN
+
+      This should run the game in borderless-window mode and improves Alt+Tab behavior.
+
+      Additional Anniversary Patch options can be configured in:
+
+          bin/plugins/W3D.Patch.ini
+
+      If you want to start the game faster, enable NoMoviesIntro so the game won't display
+      the company intro videos.
+
+      Additional command-line parameters can be found here:
+      https://www.playdome.hu/forum.php?action=ll&t=10580
+
+      However, this function can be unreliable. It is preferable to use only
+      /WIN and configure the remaining options through W3D.Patch.ini.
+
+      The launcher automatically detects the monitor resolutions. Select the
+      desired resolution from its drop-down menu.
+
+      ### FPS LIMIT
+
+      The launcher's FPS selector does not work correctly. The game may run at
+      the highest frame rate the system can produce.
+
+      Limiting the frame rate with MangoHud is recommended. There is no benefit
+      in running a turn-based game from 2003 at thousands of FPS.
+
+      ### PLAYING IN ULTRAWIDE WITHOUT AN ULTRAWIDE MONITOR
+
+      1. Right-click Worms 3D in Lutris.
+      2. Select Configure.
+      3. Enable Advanced options.
+      4. Open System options.
+      5. Enable Gamescope.
+      6. Under Game resolution, enter an ultrawide resolution.
+
+      Examples:
+
+          1706x720 or 1710x720 — approximately 21:9
+          2560x720 — 32:9
+
+      Important: If your monitor is 1920x1080 - 16:9, avoid using a 1080p ultrawide
+      rendering resolution because the game may crash. Use a 720p ultrawide
+      resolution instead.
+
+      Start the game again. The virtual ultrawide resolution should now appear
+      in the launcher's resolution menu.
+
+
+      ### SUGGESTED MODS
+
+      - Multiplayer MapPack by Simo-K on ModDB
+      All maps from the 3D series + several community-created maps, as well as the ability to play all
+      maps in multiplayer without having to unlock anything.
+
+      - Frontend Music Tweak by 4erveR on W4Tweaks
+      Replaces the "Shake your coconuts" menu song with the theme music from the American version of the game,
+      "Worms 3D Fanfare Title Theme" by Bjorn Lynne
+
+
+      README file and Lutris script by 05LumberJack / JackGreen05
+
+      ---
+
+      # GUÍA DE USO EN LUTRIS / LINUX
+
+      ## ESPAÑOL
+
+      1. Abre el juego mediante Lutris. Se utilizará Launcher.exe.
+      2. En el campo Advanced del launcher, escribe:
+
+          /WIN
+
+      Esto debería ejecutar el juego en una ventana sin bordes y mejora el funcionamiento
+      de Alt+Tab.
+
+      Las demás opciones del Anniversary Patch se pueden configurar en:
+
+          bin/plugins/W3D.Patch.ini
+
+      Recomiendo activar NoMoviesIntro para iniciar el juego sin mostrar los
+      videos introductorios de las empresas.
+
+      Puedes encontrar otros parámetros de lanzamiento aquí:
+      https://www.playdome.hu/forum.php?action=ll&t=10580
+
+      Sin embargo, esta función puede ser inestable. Es preferible utilizar
+      solamente /WIN y configurar las demás opciones mediante W3D.Patch.ini.
+
+      El launcher detecta automáticamente las resoluciones del monitor. Solo
+      debes seleccionar la resolución deseada en su menú desplegable.
+
+      ### LÍMITE DE FPS
+
+      El selector de FPS del launcher no funciona correctamente. El juego puede
+      ejecutarse a la tasa de fotogramas máxima que produzca el sistema.
+
+      Se recomienda limitar los FPS mediante MangoHud. No hay beneficio en
+      ejecutar un juego por turnos de 2003 a miles de FPS.
+
+      ### JUGAR EN ULTRAWIDE SIN UN MONITOR ULTRAWIDE
+
+      1. Haz clic derecho sobre Worms 3D en Lutris.
+      2. Selecciona Configurar.
+      3. Activa las opciones avanzadas.
+      4. Abre Opciones del sistema.
+      5. Activa Gamescope.
+      6. En Resolución del juego, introduce una resolución ultrawide.
+
+      Ejemplos:
+
+          1706x720 ó 1710x720 — aproximadamente 21:9
+          2560x720 — 32:9
+
+      Importante: si tu monitor es 1920x1080 - 16:9, evita utilizar una
+      resolución ultrawide de 1080p, ya que el juego podría cerrarse. Utiliza
+      una resolución ultrawide de 720p.
+
+      Abre nuevamente el juego. La resolución ultrawide virtual debería aparecer
+      ahora en el menú de resoluciones del launcher.
+
+
+      ### MODS SUGERIDOS
+
+      - Multiplayer MapPack por Simo-K en ModDB
+      Todos los mapas de la saga 3D + varios de la comunidad, así como poder jugar a todos los
+      mapas en el multiplayer sin desbloquear nada.
+
+      - Frontend Music Tweak por 4erveR en W4Tweaks
+      Remplaza la canción del menú "Shake your coconuts" por el tema de Bjorn Lynne "Worms 3D Fanfare Title Theme"
+      que está en la versión americana del juego
+
+
+
+      Archivo README y script de Lutris por 05LumberJack / JackGreen05
+
+
+wine:
+  overrides:
+    dinput8: n,b
