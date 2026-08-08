@@ -1,2 +1,2 @@
 # lutris-installers
-Lutris install scripts maintained by me.
+Lutris scripts for automatically installing video games on Linux
