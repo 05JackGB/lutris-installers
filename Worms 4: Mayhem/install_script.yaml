@@ -1,0 +1,326 @@
+game:
+  exe: $GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/WORMS 4 MAYHEM.EXE
+  prefix: $GAMEDIR
+  working_dir: $GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem
+
+installer:
+- input_menu:
+    description: '=== ENGLISH ===
+
+      Select your monitors refresh rate
+
+      This adjust the game to your desired FPS
+
+
+      You can change this later in game root folder/Default.cfg
+
+
+      === SPANISH ===
+
+      Selecciona la tasa de refresco de tu monitor.
+
+      Esto ajusta el juego a los FPS que desees.
+
+
+      Puedes cambiarlo despues en la carpeta raiz del juego/Default.cfg '
+    id: REFRESH
+    options:
+    - '60': 60 Hz
+    - '75': 75 Hz
+    - '90': 90 Hz
+    - '100': 100 Hz
+    - '120': 120 Hz
+    - '144': 144 Hz
+    - '165': 165 Hz
+    - '240': 240 Hz
+    preselect: '60'
+
+- input_menu:
+    description: '=== ENGLISH ===
+
+      Select the HUD Aspect Ratio.
+
+      This controls ONLY the HUD position, NOT the rendered aspect ratio.
+
+
+      You can change it later in plugins/W4M.Patch.ini
+
+      and by copying the files from /Mods/HUD Adapter %x% to /Data2
+
+
+      To change the rendering aspect ratio, you must change the resolution in Default.cfg and in Lutris, under Game Settings > Advanced > System Options > Game Resolution.
+
+
+      === SPANISH ===
+
+      Selecciona el ratio de aspecto del HUD.
+
+      Esto controla SOLAMENTE la posicion del HUD, NO el ratio de aspecto renderizado.
+
+
+      Puedes cambiarlo despues en el archivo /plugins/W4M.Patch.ini
+
+      Y copiando los archivos de /Mods/HUD Adapter %x% a /Data2
+
+
+      Para cambiar el ratio de aspecto del renderizado, debes cambiar la resolucion en Default.cfg y en Lutris > Ajustes del juego > Avanzado > Opciones del sistema > Resolucion del juego.
+
+      '
+    id: ASPRATIO
+    options:
+    - '326': '16:9 safe area / area segura'
+    - '284': '16:10 safe area / area segura'
+    - '468': '21:9 (64:27) full-width HUD / HUD completo'
+    - '753': '32:9 full-width HUD / HUD 32:9 completo'
+    preselect: '326'
+
+- task:
+    arch: win64
+    description: Creating Wine prefix.
+    name: create_prefix
+    prefix: $GAMEDIR
+
+- insert-disc:
+    message: Mount or insert a DRM-free Worms 4 Mayhem retail disc ('Mastertronic' or 'Sold Out Software'), then continue.
+    requires: mteula.txt
+
+- task:
+    description: 'Installing Base Game.
+
+
+      Do not change the installation directory or start the game after setup.
+
+      Reject GameSpy Arcade and shortcut creation if asked.
+
+      '
+    executable: $DISC/setup.exe
+    name: wineexec
+    prefix: $GAMEDIR
+
+- execute:
+    description: Making game directory writable
+    command: chmod -R u+w "$GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem"
+
+- execute:
+    description: Downloading newest Anniversary Patch from Heatray's GitHub
+    command: 'curl -s "https://api.github.com/repos/heatray/W4MPatch/releases/latest"
+      \
+
+      | grep browser_download_url \
+
+      | grep ''W4MPatch.*\.zip'' \
+
+      | cut -d ''"'' -f 4 \
+
+      | head -n 1 \
+
+      | xargs wget --no-check-certificate -O "$CACHE/W4MPatch.zip"
+
+      '
+
+- extract:
+    description: Extracting Anniversary Patch
+    dst: $GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem
+    file: $CACHE/W4MPatch.zip
+
+- execute:
+    description: Applying HUD adapter for the selected aspect ratio
+    command: |
+      set -euo pipefail
+
+      GAME_DIR="$GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem"
+      MODS_DIR="$GAME_DIR/Mods"
+      DATA2_DIR="$GAME_DIR/Data2"
+
+      HUD_FOLDER=""
+
+      case "$INPUT_ASPRATIO" in
+        326)
+          echo "16:9 selected. Its HUD files are already installed in Data2."
+          ;;
+        284)
+          HUD_FOLDER="HUD Adapter 16x10"
+          ;;
+        468)
+          HUD_FOLDER="HUD Adapter 21x9"
+          ;;
+        753)
+          HUD_FOLDER="HUD Adapter 32x9"
+          ;;
+        *)
+          echo "Unsupported aspect ratio value: $INPUT_ASPRATIO" >&2
+          exit 1
+          ;;
+      esac
+
+      if [ -n "$HUD_FOLDER" ]; then
+        HUD_SOURCE="$MODS_DIR/$HUD_FOLDER"
+
+        if [ ! -d "$HUD_SOURCE" ]; then
+          echo "HUD adapter folder not found: $HUD_SOURCE" >&2
+          exit 1
+        fi
+
+        mkdir -p "$DATA2_DIR"
+        cp -a "$HUD_SOURCE/." "$DATA2_DIR/"
+
+        echo "Installed HUD adapter: $HUD_FOLDER"
+      fi
+
+- move:
+    description: Backing up the original Default.cfg
+    src: "$GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/Default.cfg"
+    dst: "$GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/Default.cfg.backup"
+
+- write_file:
+    description: Configuring widescreen resolution and refresh rate
+    file: $GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/Default.cfg
+    #Editing the Default.cfg file to execute settings
+    content: |
+        /W:$RESOLUTION_WIDTH
+        /H:$RESOLUTION_HEIGHT
+        /FS
+        /WIN
+        /REFRESH:$INPUT_REFRESH
+        /TRIGGERSINVISIBLE
+        /STARTMENU:WXFE.MainMenu
+        /GAMEOVERMENU:WXFE.MainMenu
+
+        ////////////////////////////////////////////
+        //CONFIG:launcher.cfg  //_load_settings_from_the_file_launcher.cfg
+        //commented_because_launcher.cfg_overwrites_Default.cfg_settings
+
+        /////////////////////////////////////////////////////////////
+        //_UNCOMMENT_LINES_BELOW_FOR_MANUAL_CAMERA_AND_SCREENSHOTS
+        //_MANUAL_CAMERA_TRIGGERED_BY_M_BUTTON
+        //_SCREENSHOT_TRIGGERED_BY_PRINTSCREEN_BUTTON
+
+        //ALLOWSCREENSHOTS
+        //MANUALCAMERA
+
+
+        /////////////////////////////////////////////////////////////
+        //_UNCOMMENT_LINES_BELOW_FOR_EXTRA_DEBUGGING_INFO
+
+        //NET_LOG
+        //AITEST
+
+- write_file:
+    #Editing the AnniversaryPatch.ini to set the SecondaryWeapon icon position according to the Aspect Ratio of the user
+    description: Configuring aspect ratio
+    file: $GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/plugins/W4M.Patch.ini
+    content: |
+        [Main]
+        AspectRatioFix = 1      // [0 = false, 1 = true]
+        LandmineLodFix = 1      // Disables low-poly landmine model [0 = false, 1 = true]
+        EnableAllLanguages = 1  // Allows to switch to more languages [0 = false, 1 = true]
+        FrameInterval = 0       // Interval between frames (ms), experimental [Default = 16 = ~62 FPS]
+
+        [Window]
+        Borderless = 1          // Creates window without borders (only in windowed mode) [Default = 0 = false, 1 = true]
+
+        [GameSpy]
+        Host = openspy.net      // GameSpy server host / [Default = gamespy.com]
+        MotdUrl = http://w4tweaks.gitlab.io/team17/openspy/mayhem/motd/
+                                // GameSpy MOTD base URL, previously hosted by Team17
+                                // http://www.team17.com/gamespy/mayhem/motd/            - default
+                                // http://w4tweaks.gitlab.io/team17/gamespy/mayhem/motd/ - original MOTD content
+                                // http://localhost                                      - disable MOTD popup
+                                // (GS Team17 stuff repo: https://gitlab.com/w4tweaks/team17)
+
+        [HUD]
+        // Secondary Weapon icon position
+        SecondWeapon.Back.PosX = $INPUT_ASPRATIO // 220 - 4:3 default
+                                    // 284 - 16:10
+                                    // 326 - 16:9
+                                    // 468 - 21:9 (64:27)
+                                    // 753 - 32:9
+        SecondWeapon.Back.PosY = 200 // 200 - 4:3 default
+
+
+- write_file:
+    #Editing the Anniversary's Patch README to write more instructions in how to use the patch
+    description: Configuring README.txt
+    file: $GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem/README.txt
+    content: |
+        Worms 4 Mayhem Anniversary Patch
+        ================================
+
+        Unofficial patch for Worms 4 Mayhem.
+
+        Supported EXE versions:
+        - Euro 1.01 No DRM
+        - Euro 1.01 RELOADED
+
+        W4Tweaks:         http://w4tweaks.ucoz.ru
+        W4Tweaks Discord: https://discord.gg/9Y6rKdBdpS
+
+        Features
+        --------
+
+        W4M.Patch
+
+        - AspectRatioFix - applies aspect ratio patches (Hor+/Vert+)
+        - LandmineLodFix - disables low-poly landmine model
+        - EnableAllLanguages - allows to switch to more languages (menu tweak required
+        to include additional languages it the list)
+        - FrameInterval - changes interval between frames to help with performance
+        issues
+        - Borderless - creates window without borders (only in windowed mode)
+        - Host - changes GameSpy server address (openspy.net by default)
+        - MotdUrl - changes GameSpy MOTD URL (preconfigured)
+        - Hard-coded HUD tweaks
+
+        W4M.Loader
+
+        - Allows to load modified resources without replacing original files
+        Place modified XML, XOM or TGA files in the Data2 directory
+
+        Installation
+        ------------
+
+        Copy content of archive to the Worms 4 Mayhem game directory.
+
+        Mods 16:9 UI tweaks and all languages select are already installed in the
+        Data2 directory. If the aspect ratio is different from 16:9, copy files
+        from the Mods directory for your aspect ratio to the Data2 directory with
+        replacement.
+
+        Check the ini files for available features.
+
+
+        ---- DEFAULT.CFG file ----
+        This file gives parameters to the game for working using command line values.
+        You can go to default.cfg and adjust it with your desired settings. Here are some command lines explained:
+        /W:%NUM%  - width
+        /H:%NUM%  - height
+        /REFRESH:%NUM%  - games FPS
+        /NOMOVIES  - to skip all video cutscenes
+        /NOLOGOMOVIE  - skip only the brand logo videos
+        /WIN  - run the game in borderless mode
+        /SHOWOVERLAY  - show FPS, cull, draw, wait, etc
+        All comands: https://gist.github.com/heatray/48fd8a7b45642ce0bb5fb2b4bc4b0b29
+
+        RECOMMENDED: if your monitors aspect ratio is other than 16:9 go to /plugins/W4M.Patch.ini
+        Adjust SecondWeapon.Back.PosX to your correct aspect ratio.
+        And copy the files inside /Mods/HUD_Adapter_%your-aspect-ratio% to Data2_folder.
+
+        But if you only have a 16:9 monitor on Linux you ALSO have to do this:
+        1- In Lutris, right click Worms 4 Mayhem → Settings → mark "Advanced" → System Settings
+        2- Activate "Gamescope", then add an Ultrawidescreen resolution in "Game Resolution", e.g: 2560x720
+        IMPORTANT: if your monitor is 1080p 16:9, dont use an Ultrawidescreen 1080p resolution here because it may crash the game.
+        Instead use 720p. Eg: 2560x720 (32:9), 1710x720 or 1706x720 (21:9)
+        3- Save and play.
+
+- execute:
+    description: Removing unused StarForce remnants
+    command: |
+      GAME_DIR="$GAMEDIR/drive_c/Program Files (x86)/Codemasters/Worms 4 Mayhem"
+      rm -f -- \
+        "$GAME_DIR/protect.exe" \
+        "$GAME_DIR/protect.x64"
+
+
+wine:
+  overrides:
+    dinput8: n,b
